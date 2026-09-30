@@ -55,6 +55,17 @@ class RequestHandler(BaseHTTPRequestHandler):
                 return file_browser.serve(self, prefix, root, path)
         self.send_json(404, {"error": f"not found: {path}"})
 
+    def do_HEAD(self):
+        # video players probe files with HEAD before streaming them
+        path = urlsplit(self.path).path
+        for prefix, root in self.server.browse_dirs.items():
+            if path == prefix or path.startswith(prefix + "/"):
+                return file_browser.serve(self, prefix, root, path)
+        self.send_response(405)
+        self.send_header("Allow", "GET, POST")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def do_POST(self):
         path = urlsplit(self.path).path
         route = self.server.post_routes.get(path[5:]) if path.startswith("/api/") else None

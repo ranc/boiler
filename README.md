@@ -48,7 +48,7 @@ On service stop the relay is turned off.
 | `POST /api/schedule` | `{"schedule": [...]}` | replace and save the schedule |
 
 `GET /usb/` is a hidden (not linked from the page), read-only file browser of `/media/usb`, like Apache's directory
-listing. Set `BOILER_USB_DIR` to serve another folder (in the unit: `Environment=BOILER_USB_DIR=/path`).
+listing. Files support byte ranges and HEAD, so videos (mp4) can seek and play on iOS Safari. Set `BOILER_USB_DIR` to serve another folder (in the unit: `Environment=BOILER_USB_DIR=/path`).
 
 POSTs need `Content-Type: application/json`. Bad input returns 400 `{"error": ...}`. There's no auth, so keep it on the LAN.
 

@@ -1,0 +1,30 @@
+# Boiler daemon: on/off scheduler + web UI on port 80
+#
+# Install on the Pi (code checked out at /home/pi/boiler):
+#   crontab -e                                    # remove the old "boiler check" line
+#   sudo systemctl disable --now apache2          # frees port 80 (the old index.php)
+#   sudo cp /home/pi/boiler/deploy/boiler.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now boiler
+#
+# Logs:     journalctl -u boiler -f   (also /home/pi/boiler/boiler.log)
+# Restart:  sudo systemctl restart boiler
+
+[Unit]
+Description=Boiler on/off scheduler
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+Group=gpio
+# allow binding port 80 without running as root
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+WorkingDirectory=/home/pi/boiler
+ExecStart=/usr/bin/python3 -u /home/pi/boiler/boiler_server.py
+Restart=always
+RestartSec=5
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

@@ -1,7 +1,0 @@
-#!/bin/bash
-. gpio_map.txt
-cd /sys/class/gpio
-g=${map[$1]}
-echo Truning on $g
-echo 0 > gpio$g/value
-cd -

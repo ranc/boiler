@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#b4461b">
+<title>Boiler Control</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+<style>
+:root {
+  --bg: #f6f3f1; --card: #ffffff; --text: #2a211d; --muted: #6f6660; --line: #e5ddd8;
+  --accent: #b4461b; --accent-soft: #f8e6dc; --on: #e0700f; --on-soft: #fdeedd;
+  --off: #2f6fb0; --off-soft: #e2edf8;
+  --danger: #c0392b; --danger-soft: #fbe6e3; --warn-soft: #fff4d6; --warn-line: #e8c65a;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #171311; --card: #221c19; --text: #ede6e2; --muted: #a0958f; --line: #3a302b;
+    --accent: #e0703f; --accent-soft: #3a2419; --on: #f5953a; --on-soft: #3d2913;
+    --off: #6aa6e6; --off-soft: #182a3d;
+    --danger: #ec6b5d; --danger-soft: #3a1f1c; --warn-soft: #332b14; --warn-line: #7a6522;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+header {
+  background: var(--accent); color: #fff; padding: 16px;
+  position: sticky; top: 0; z-index: 5; box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+header .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; max-width: 640px; margin: 0 auto; }
+header h1 { margin: 0; font-size: 1.35rem; }
+header .meta { font-size: .85rem; opacity: .9; white-space: nowrap; font-variant-numeric: tabular-nums; }
+main { max-width: 640px; margin: 0 auto; padding: 16px; }
+h2 { font-size: 1.15rem; margin: 0 0 12px; }
+h3 { font-size: 1rem; margin: 0 0 8px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+.card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+.card-head h2 { margin: 0; }
+.muted { color: var(--muted); font-size: .88rem; }
+.error { background: var(--danger-soft); border: 1px solid var(--danger); border-radius: 10px; padding: 10px 12px; margin-bottom: 16px; }
+[hidden] { display: none !important; }
+a { color: var(--accent); }
+
+/* status */
+.status { display: flex; align-items: center; gap: 14px; }
+.lamp {
+  flex: 0 0 auto; width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center;
+  font-weight: 800; font-size: 1.3rem; letter-spacing: .04em; background: var(--line); color: var(--muted);
+}
+.lamp.on { background: var(--on); color: #fff; box-shadow: 0 0 0 6px var(--on-soft); }
+.lamp.off { background: var(--off-soft); color: var(--off); }
+.status-text { min-width: 0; }
+.status-text .main { font-weight: 700; font-size: 1.1rem; }
+.status-text .sub { color: var(--muted); font-size: .92rem; }
+.manual-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-radius: 10px; padding: 8px 10px; margin-top: 12px; }
+.manual-bar.on { background: var(--on-soft); }
+.manual-bar.off { background: var(--off-soft); }
+
+/* manual */
+.row-label { font-size: .85rem; font-weight: 600; color: var(--muted); margin: 10px 0 6px; }
+.row-label:first-of-type { margin-top: 0; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn-row button { flex: 1 1 0; min-width: 64px; }
+button {
+  min-height: 44px; padding: 8px 12px; border-radius: 10px; font: inherit; font-weight: 600;
+  border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer;
+}
+button:active { transform: scale(.98); }
+button:disabled { opacity: .5; cursor: wait; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.on { background: var(--on); border-color: var(--on); color: #fff; }
+button.off { background: var(--off); border-color: var(--off); color: #fff; }
+button.ghost-danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+.custom { display: flex; gap: 8px; margin-top: 12px; }
+.custom input {
+  flex: 1; min-width: 0; min-height: 44px; padding: 8px 12px; border-radius: 10px; font: inherit;
+  border: 1px solid var(--line); background: var(--bg); color: var(--text);
+}
+
+/* schedule editor */
+.entry { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+.entry input {
+  min-height: 44px; padding: 8px 12px; border-radius: 10px; font: inherit; color: var(--text);
+  border: 1px solid var(--line); background: var(--bg); width: 100%; min-width: 0;
+}
+.entry.active { border-color: var(--on); box-shadow: 0 0 0 3px var(--on-soft); }
+.days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-bottom: 10px; }
+.days button { min-height: 40px; padding: 4px 0; font-size: .82rem; }
+.days button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.days button.every { grid-column: 1 / -1; }
+.entry-fields { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+.entry-fields label { display: grid; gap: 4px; font-size: .8rem; color: var(--muted); font-weight: 600; }
+.entry.invalid { border-color: var(--danger); }
+.entry .problem { color: var(--danger); font-size: .85rem; margin-top: 6px; }
+button.add { width: 100%; border-style: dashed; margin-bottom: 14px; }
+.save-bar { display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid var(--line); padding-top: 12px; }
+.save-bar button { min-width: 110px; }
+.empty { text-align: center; padding: 12px; }
+
+details summary { cursor: pointer; color: var(--muted); }
+details ul { margin: 6px 0 0; padding-left: 18px; font-size: .9rem; }
+details li { padding: 2px 0; }
+
+#toast {
+  position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: calc(100% - 32px);
+  background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.25); opacity: 0; transition: opacity .2s; pointer-events: none;
+}
+#toast.show { opacity: 1; }
+#toast.bad { background: var(--danger); color: #fff; }
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <h1>🔥 Boiler</h1>
+    <div class="meta" id="clock">…</div>
+  </div>
+</header>
+
+<main>
+  <div class="error" id="offline" hidden><strong>Boiler server is not responding.</strong> Retrying…</div>
+  <div class="error" id="monitor-dead" hidden><strong>The scheduler has stopped.</strong> Check boiler.log and restart the service.</div>
+
+  <div class="card" aria-live="polite">
+    <div class="status">
+      <div class="lamp" id="lamp">…</div>
+      <div class="status-text">
+        <div class="main" id="status-main">Loading…</div>
+        <div class="sub" id="status-sub"></div>
+      </div>
+    </div>
+    <div class="manual-bar" id="manual-bar" hidden>
+      <span id="manual-text"></span>
+      <button class="ghost-danger" data-api="clear">Back to schedule</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Manual</h2>
+    <div class="row-label">Turn on for</div>
+    <div class="btn-row" id="on-row"></div>
+    <div class="row-label">Turn off for</div>
+    <div class="btn-row" id="off-row"></div>
+    <form class="custom" id="custom">
+      <input type="number" id="custom-hours" min="0.1" max="24" step="0.1" inputmode="decimal"
+             placeholder="Hours (max 24)" aria-label="Hours" required>
+      <button class="on" data-on="1">On</button>
+      <button class="off" data-on="0">Off</button>
+    </form>
+    <p class="muted">A manual on/off wins over the schedule until it ends, then the schedule takes over again. It survives a restart.</p>
+  </div>
+
+  <div class="card" id="schedule-pane">
+    <div class="card-head"><h2>Schedule</h2><span class="muted" id="dirty" hidden>Unsaved changes</span></div>
+    <div id="entries"></div>
+    <button id="add-entry" class="add">+ Add heating time</button>
+    <div class="save-bar">
+      <button id="revert">Revert</button>
+      <button id="save" class="primary">Save</button>
+    </div>
+  </div>
+
+  <details class="card" id="history" hidden><summary>Recent changes</summary><ul id="history-list"></ul></details>
+  <p class="muted">Saved in <code id="config-path">the config file</code> · relay on GPIO<span id="gpio">4</span></p>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const PRESET_HOURS = [1, 2, 4, 8];
+const $ = (id) => document.getElementById(id);
+let state = null;
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function durationStr(sec) {
+  sec = Math.max(0, Math.round(sec));
+  if (sec < 60) return sec + " s";
+  const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60);
+  return [h && h + " h", m && m + " min"].filter(Boolean).join(" ") || "0 min";
+}
+
+const onOff = (on) => (on ? "on" : "off");
+
+// ---------- status ----------
+function renderStatus(s) {
+  const actual = s.boiler;
+  const lamp = $("lamp");
+  lamp.className = "lamp " + (actual === true ? "on" : actual === false ? "off" : "");
+  lamp.textContent = actual === true ? "ON" : actual === false ? "OFF" : "?";
+  document.title = `Boiler is ${actual === null ? "unknown" : onOff(actual)}`;
+
+  const ov = s.override, nc = s.next_change;
+  let main, sub;
+  if (ov) {
+    main = `Manually ${onOff(ov.on)}`;
+    sub = `until ${esc(ov.until)} (${durationStr(ov.left)} left), then the schedule (${onOff(ov.then)})`;
+  } else {
+    main = s.schedule_on ? "Heating on schedule" : "Off";
+    sub = !nc ? (s.config.schedule.length ? "" : "No heating times set")
+      : s.schedule_on ? `until ${esc(nc.at)}` : `next on ${esc(nc.at)} (in ${durationStr(nc.in)})`;
+  }
+  if (actual !== null && actual !== s.wanted) sub = "Switching…";
+  $("status-main").textContent = main;
+  $("status-sub").innerHTML = sub;
+
+  $("manual-bar").hidden = !ov;
+  if (ov) {
+    $("manual-bar").className = "manual-bar " + onOff(ov.on);
+    $("manual-text").innerHTML = `Manual <strong>${onOff(ov.on)}</strong> · ${durationStr(ov.left)} left`;
+  }
+}
+
+function renderHistory(s) {
+  $("history").hidden = s.history.length === 0;
+  $("history-list").innerHTML = s.history.map((h) =>
+    `<li>${esc(h.at)} · turned <strong>${onOff(h.on)}</strong> <span class="muted">· ${esc(h.reason)}</span></li>`).join("");
+}
+
+$("on-row").innerHTML = PRESET_HOURS.map((h) => `<button class="on" data-api="override" data-on="1" data-sec="${h * 3600}">${h} h</button>`).join("");
+$("off-row").innerHTML = PRESET_HOURS.map((h) => `<button class="off" data-api="override" data-on="0" data-sec="${h * 3600}">${h} h</button>`).join("");
+
+// ---------- schedule editor ----------
+// draft = editable copy of the schedule; days are always explicit 1..7 here
+let draft = null;   // [{days: [..], start: "HH:MM", end: "HH:MM"}]
+let saved = null;   // JSON of the draft as last loaded, to detect unsaved changes
+
+function toDraft() {
+  return state.config.schedule.map((e) => ({
+    days: e.days.includes(0) ? [1, 2, 3, 4, 5, 6, 7] : [...e.days], start: e.start, end: e.end,
+  }));
+}
+
+function loadDraft() {
+  draft = toDraft();
+  saved = JSON.stringify(draft);
+  renderEntries();
+  updateDirty();
+}
+
+const isDirty = () => draft !== null && JSON.stringify(draft) !== saved;
+const TIME_RE = /^\d{2}:\d{2}(:\d{2})?$/;
+
+function entryProblem(e) {
+  if (e.days.length === 0) return "Pick at least one day";
+  if (!TIME_RE.test(e.start)) return "Set a start time";
+  if (!TIME_RE.test(e.end)) return "Set an end time";
+  if (e.end <= e.start) return "End must be after start (split an overnight window in two)";
+  return "";
+}
+
+// is this saved entry heating right now (only highlighted while the editor is clean)
+function entryActive(e) {
+  if (isDirty() || !state) return false;
+  const now = new Date(), day = now.getDay() + 1;
+  const hhmm = now.toTimeString().slice(0, 8);
+  return e.days.includes(day) && e.start <= hhmm && hhmm < e.end;
+}
+
+function renderEntries() {
+  $("entries").innerHTML = draft.length === 0
+    ? `<p class="muted empty">No heating times. The boiler only runs manually.</p>`
+    : draft.map((e, i) => {
+        const every = e.days.length === 7, problem = entryProblem(e);
+        return `<div class="entry${problem ? " invalid" : ""}${entryActive(e) ? " active" : ""}" data-entry="${i}"><div class="days">` +
+          `<button class="every" data-every aria-pressed="${every}">Every day</button>` +
+          DAYS.map((d, j) => `<button data-day="${j + 1}" aria-pressed="${e.days.includes(j + 1)}">${d}</button>`).join("") +
+          `</div><div class="entry-fields">` +
+          `<label>Start<input type="time" data-field="start" value="${esc(e.start)}" required></label>` +
+          `<label>End<input type="time" data-field="end" value="${esc(e.end)}" required></label>` +
+          `<button class="ghost-danger" data-remove aria-label="Remove heating time">✕</button></div>` +
+          `<div class="problem"${problem ? "" : " hidden"}>${problem}</div></div>`;
+      }).join("");
+}
+
+function updateDirty() {
+  const dirty = isDirty();
+  $("dirty").hidden = !dirty;
+  $("save").disabled = !dirty;
+  $("revert").disabled = !dirty;
+}
+
+async function saveDraft() {
+  const bad = draft.map(entryProblem).find(Boolean);
+  if (bad) { renderEntries(); return toast(bad, true); }
+  $("save").disabled = true;
+  const ok = await post("schedule", { schedule: draft });
+  if (ok) {
+    await refresh();
+    loadDraft();
+  } else {
+    updateDirty();
+  }
+}
+
+$("add-entry").addEventListener("click", () => {
+  const last = draft[draft.length - 1];
+  draft.push(last ? { ...last, days: [...last.days] } : { days: [1, 2, 3, 4, 5, 6, 7], start: "16:00", end: "21:00" });
+  renderEntries(); updateDirty();
+});
+$("revert").addEventListener("click", loadDraft);
+$("save").addEventListener("click", saveDraft);
+$("entries").addEventListener("click", (e) => {
+  const b = e.target.closest("button"), row = e.target.closest("[data-entry]");
+  if (!b || !row) return;
+  const entry = draft[+row.dataset.entry];
+  if (b.hasAttribute("data-remove")) draft.splice(+row.dataset.entry, 1);
+  else if (b.hasAttribute("data-every")) entry.days = entry.days.length === 7 ? [] : [1, 2, 3, 4, 5, 6, 7];
+  else if (b.dataset.day) {
+    const d = +b.dataset.day;
+    entry.days = entry.days.includes(d) ? entry.days.filter((x) => x !== d) : [...entry.days, d].sort();
+  }
+  renderEntries(); updateDirty();
+});
+$("entries").addEventListener("input", (e) => {
+  const row = e.target.closest("[data-entry]");
+  if (!row) return;
+  const entry = draft[+row.dataset.entry];
+  if (e.target.dataset.field) entry[e.target.dataset.field] = e.target.value;
+  // update the validation message in place, rebuilding would steal focus from the input
+  const problem = entryProblem(entry), box = row.querySelector(".problem");
+  row.classList.toggle("invalid", !!problem);
+  row.classList.remove("active");
+  box.textContent = problem;
+  box.hidden = !problem;
+  updateDirty();
+});
+window.addEventListener("beforeunload", (e) => { if (isDirty()) { e.preventDefault(); e.returnValue = ""; } });
+
+// ---------- render all ----------
+function render(s) {
+  $("clock").textContent = s.now;
+  $("monitor-dead").hidden = s.monitor.alive;
+  $("config-path").textContent = s.config_path;
+  $("gpio").textContent = s.gpio;
+  renderStatus(s);
+  renderHistory(s);
+  // pick up changes saved elsewhere (another phone, a hand edit) unless we're editing
+  const editing = isDirty() || (document.activeElement && document.activeElement.closest("#schedule-pane"));
+  if (draft === null || (!editing && JSON.stringify(toDraft()) !== saved)) loadDraft();
+  else if (!editing) renderEntries(); // refresh the "heating now" highlight
+}
+
+// ---------- data ----------
+let refreshTimer = null;
+async function refresh() {
+  clearTimeout(refreshTimer);
+  try {
+    const res = await fetch("/api/state", { cache: "no-store" });
+    if (!res.ok) throw new Error(res.status);
+    state = await res.json();
+    $("offline").hidden = true;
+    render(state);
+  } catch (e) {
+    $("offline").hidden = false;
+  }
+  refreshTimer = setTimeout(refresh, document.hidden ? 30000 : 2000);
+}
+
+// returns true on success
+async function post(api, body, button) {
+  if (button) button.disabled = true;
+  try {
+    const res = await fetch("/api/" + api, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({ error: "HTTP " + res.status }));
+    toast(data.message || data.error, !res.ok);
+    return res.ok;
+  } catch (e) {
+    toast("Boiler server is not reachable", true);
+    return false;
+  } finally {
+    if (button) button.disabled = false;
+    if (api !== "schedule") refresh();
+  }
+}
+
+let toastTimer = null;
+function toast(msg, bad) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "show" + (bad ? " bad" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ""; }, 3500);
+}
+
+// ---------- events ----------
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-api]");
+  if (!b) return;
+  const d = b.dataset, body = {};
+  if (d.on) body.on = d.on === "1";
+  if (d.sec) body.sec = +d.sec;
+  post(d.api, body, b);
+});
+
+$("custom").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const input = $("custom-hours");
+  const sec = Math.round(parseFloat(input.value) * 3600);
+  input.value = "";
+  input.blur();
+  post("override", { on: e.submitter ? e.submitter.dataset.on === "1" : true, sec }, e.submitter);
+});
+
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+refresh();
+</script>
+</body>
+</html>

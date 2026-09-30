@@ -1,0 +1,6 @@
+# Project exclude paths
+*.log
+__pycache__/
+test_config.json
+test_override.json
+*.tmp

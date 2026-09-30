@@ -17,14 +17,17 @@ if os.name == 'nt':
     config_path = "test_config.json"
     override_path = "test_override.json"
     legacy_path = "sched.data"
+    usb_dir = "."
     http_port = 8080
 else:
     from gpio_linux import turn, setup, get, BOILER_GPIO
     config_path = "/home/pi/boiler_config.json"
     override_path = "/home/pi/boiler_override.json"
     legacy_path = "/home/pi/boiler/sched.data" # the old boiler.c schedule, imported once
+    usb_dir = "/media/usb" # browsable (read-only, not linked from the page) at /usb/
     http_port = 80
 http_port = int(os.environ.get("BOILER_HTTP_PORT", http_port))
+usb_dir = os.environ.get("BOILER_USB_DIR", usb_dir)
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "website")
 
 '''
@@ -279,7 +282,7 @@ def main():
         'clear': lambda b: monitor.clear_override(),
         'schedule': monitor.update_schedule,
     }
-    srv = WebServer(http_port, static_dir, get_routes, post_routes)
+    srv = WebServer(http_port, static_dir, get_routes, post_routes, browse_dirs={"/usb": usb_dir})
     # systemd stops us with SIGTERM: turn it into a clean exit so the boiler isn't left on unattended
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     logging.getLogger('web').info(f"Serving on port {http_port}")

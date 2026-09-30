@@ -2,14 +2,17 @@ import json
 import logging
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional
 from urllib.parse import urlsplit
+
+import file_browser
 
 '''
     Minimal HTTP server for the boiler UI:
         GET  /           -> website/index.html (whitelisted static files only)
         GET  /api/<name> -> json of get_routes[name]()
         POST /api/<name> -> json body is passed to post_routes[name](body), returns {"message": ...}
+        GET  <prefix>/…  -> read-only file browsing of browse_dirs[prefix] (see file_browser.py)
     handlers raise ValueError for bad input, which is returned as 400 {"error": ...}
 '''
 
@@ -24,11 +27,13 @@ class WebServer(ThreadingHTTPServer):
 
     def __init__(self, port: int, static_dir: str,
                  get_routes: Dict[str, Callable[[], object]],
-                 post_routes: Dict[str, Callable[[dict], str]]) -> None:
+                 post_routes: Dict[str, Callable[[dict], str]],
+                 browse_dirs: Optional[Dict[str, str]] = None) -> None:
         super().__init__(("0.0.0.0", port), RequestHandler)
         self.static_dir = static_dir
         self.get_routes = get_routes
         self.post_routes = post_routes
+        self.browse_dirs = browse_dirs or {} # url prefix (like "/usb") -> directory
         self.logger = logging.getLogger('web')
 
 
@@ -45,6 +50,9 @@ class RequestHandler(BaseHTTPRequestHandler):
             return self.call(lambda: route())
         if path in STATIC_FILES:
             return self.send_static(*STATIC_FILES[path])
+        for prefix, root in self.server.browse_dirs.items():
+            if path == prefix or path.startswith(prefix + "/"):
+                return file_browser.serve(self, prefix, root, path)
         self.send_json(404, {"error": f"not found: {path}"})
 
     def do_POST(self):

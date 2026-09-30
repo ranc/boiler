@@ -16,6 +16,7 @@ with Python 3.7 at /usr/bin/python3, so it has to stay 3.7 compatible (no walrus
 | `boiler_server.py` | Entry point: `BoilerMonitor` thread (schedule + override → relay), the API routes, shutdown |
 | `boiler_config.py` | Load, validate, save the JSON schedule; one-time import of the old `sched.data` |
 | `web_server.py` | Generic stdlib HTTP server (static whitelist + JSON GET/POST), same as the garden project |
+| `file_browser.py` | Read-only directory listing and file download for `/usb/` |
 | `website/index.html` | The whole UI: status, manual on/off, schedule editor |
 | `gpio_linux.py` / `gpio_nt.py` | sysfs GPIO for the relay / Windows stub for local runs |
 | `deploy/boiler.service` | systemd unit, install steps in its header |
@@ -45,6 +46,9 @@ On service stop the relay is turned off.
 | `POST /api/override` | `{"on": true, "sec": 3600}` | manual on/off for `sec` seconds |
 | `POST /api/clear` | `{}` | end the manual override |
 | `POST /api/schedule` | `{"schedule": [...]}` | replace and save the schedule |
+
+`GET /usb/` is a hidden (not linked from the page), read-only file browser of `/media/usb`, like Apache's directory
+listing. Set `BOILER_USB_DIR` to serve another folder (in the unit: `Environment=BOILER_USB_DIR=/path`).
 
 POSTs need `Content-Type: application/json`. Bad input returns 400 `{"error": ...}`. There's no auth, so keep it on the LAN.
 

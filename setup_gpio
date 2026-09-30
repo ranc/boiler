@@ -1,0 +1,13 @@
+#!/bin/bash
+. gpio_map.txt
+cd /sys/class/gpio
+
+for g in "${map[@]}"
+do
+echo Setting $g
+echo $g > export
+echo out > gpio$g/direction
+chmod a+w gpio$g/value
+echo 1 > gpio$g/value
+done
+cd -
